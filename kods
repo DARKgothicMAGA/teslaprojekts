@@ -1,0 +1,239 @@
+using System;
+using System.Collections.Generic;
+using System.Data.SQLite;
+using System.IO;
+
+namespace TeslaRentalPlatform
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            string dbPath = "tesla_rental.db";
+
+            // Nodrošina datubāzes iestatīšanu
+            if (!File.Exists(dbPath))
+            {
+                SQLiteConnection.CreateFile(dbPath);
+                InitializeDatabase(dbPath);
+            }
+
+            using (var connection = new SQLiteConnection($"Data Source={dbPath};Version=3;"))
+            {
+                connection.Open();
+
+                // Vienkārša izvēlne mijiedarbībai
+                Console.WriteLine("Tesla Īres Platforma\n======================");
+                Console.WriteLine("1. Reģistrēt klientu");
+                Console.WriteLine("2. Parādīt Tesla automašīnas");
+                Console.WriteLine("3. Nomāt Teslu");
+                Console.WriteLine("4. Pabeigt īri un aprēķināt maksājumu");
+                Console.WriteLine("5. Iziet");
+
+                while (true)
+                {
+                    Console.Write("Izvēlies opciju: ");
+                    var choice = Console.ReadLine();
+
+                    switch (choice)
+                    {
+                        case "1":
+                            RegisterCustomer(connection);
+                            break;
+                        case "2":
+                            ListTeslaCars(connection);
+                            break;
+                        case "3":
+                            RentTesla(connection);
+                            break;
+                        case "4":
+                            CompleteRental(connection);
+                            break;
+                        case "5":
+                            return;
+                        default:
+                            Console.WriteLine("Nepareiza opcija. Mēģiniet vēlreiz.");
+                            break;
+                    }
+                }
+            }
+        }
+
+        static void InitializeDatabase(string dbPath)
+        {
+            using (var connection = new SQLiteConnection($"Data Source={dbPath};Version=3;"))
+            {
+                connection.Open();
+
+                string createCarsTable = @"
+                    CREATE TABLE TeslaCars (
+                        ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                        Modelis TEXT NOT NULL,
+                        StundasLikme TEXT NOT NULL,
+                        KilometraLikme REAL NOT NULL
+                    );"; // Apzināta kļūda: StundasLikme kā TEXT, nevis REAL
+
+                string createCustomersTable = @"
+                    CREATE TABLE Klienti (
+                        ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                        PilnsVards TEXT NOT NULL,
+                        Epasts TEXT NOT NULL UNIQUE
+                    );"; // Apzināta kļūda: Epasts ir UNIQUE
+
+                string createRentalsTable = @"
+                    CREATE TABLE Nomāšanas (
+                        ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                        KlientaID INTEGER NOT NULL,
+                        AutoID INTEGER NOT NULL,
+                        SākumaLaiks TEXT NOT NULL,
+                        BeiguLaiks TEXT,
+                        NobrauktieKilometri TEXT,
+                        KopējāMaksa REAL,
+                        FOREIGN KEY (KlientaID) REFERENCES Klienti(ID),
+                        FOREIGN KEY (AutoID) REFERENCES TeslaCars(ID)
+                    );"; // Apzināta kļūda: NobrauktieKilometri kā TEXT, nevis REAL
+
+                var command = connection.CreateCommand();
+
+                command.CommandText = createCarsTable;
+                command.ExecuteNonQuery();
+
+                command.CommandText = createCustomersTable;
+                command.ExecuteNonQuery();
+
+                command.CommandText = createRentalsTable;
+                command.ExecuteNonQuery();
+
+                // Pievieno piemērus ar Tesla automašīnām
+                command.CommandText = @"
+                    INSERT INTO TeslaCars (Modelis, StundasLikme, KilometraLikme) 
+                    VALUES ('Model 3', '10', 0.5), ('Model Y', '12', 0.6), ('Model S', '15', 0.8), ('Model X', '18', 1.0);
+                "; // Apzināta kļūda: StundasLikme vērtības kā teksts
+                command.ExecuteNonQuery();
+            }
+        }
+
+        static void RegisterCustomer(SQLiteConnection connection)
+        {
+            Console.Write("Ievadiet pilnu vārdu: ");
+            string pilnsVards = Console.ReadLine();
+
+            Console.Write("Ievadiet e-pastu: ");
+            string epasts = Console.ReadLine();
+
+            string query = "INSERT INTO Klienti (PilnsVards, Epasts) VALUES (@PilnsVards, @Epasts);";
+            using (var command = new SQLiteCommand(query, connection))
+            {
+                command.Parameters.AddWithValue("@PilnsVards", pilnsVards);
+                command.Parameters.AddWithValue("@Epasts", epasts);
+                command.ExecuteNonQuery();
+            }
+
+            Console.WriteLine("Klients veiksmīgi reģistrēts!\n");
+        }
+
+        static void ListTeslaCars(SQLiteConnection connection)
+        {
+            string query = "SELECT * FROM TeslaCars;";
+            using (var command = new SQLiteCommand(query, connection))
+            using (var reader = command.ExecuteReader())
+            {
+                Console.WriteLine("Pieejamās Tesla automašīnas:\n");
+                while (reader.Read())
+                {
+                    Console.WriteLine($"ID: {reader["ID"]}, Modelis: {reader["Modelis"]}, Stundas Likme: {reader["StundasLikme"]} EUR/h, Kilometra Likme: {reader["KilometraLikme"]} EUR/km");
+                }
+                Console.WriteLine();
+            }
+        }
+
+        static void RentTesla(SQLiteConnection connection)
+        {
+            Console.Write("Ievadiet klienta ID: ");
+            int klientaId = int.Parse(Console.ReadLine());
+
+            Console.Write("Ievadiet auto ID: ");
+            int autoId = int.Parse(Console.ReadLine());
+
+            string sākumaLaiks = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"); // Apzināta kļūda: UTC vietā lokālais laiks
+
+            string query = "INSERT INTO Nomāšanas (KlientaID, AutoID, SākumaLaiks) VALUES (@KlientaID, @AutoID, @SākumaLaiks);";
+            using (var command = new SQLiteCommand(query, connection))
+            {
+                command.Parameters.AddWithValue("@KlientaID", klientaId);
+                command.Parameters.AddWithValue("@AutoID", autoId);
+                command.Parameters.AddWithValue("@SākumaLaiks", sākumaLaiks);
+                command.ExecuteNonQuery();
+            }
+
+            Console.WriteLine("Tesla nomāšana veiksmīgi sākta!\n");
+        }
+
+        static void CompleteRental(SQLiteConnection connection)
+        {
+            Console.Write("Ievadiet nomāšanas ID: ");
+            int nomasId = int.Parse(Console.ReadLine());
+
+            Console.Write("Ievadiet nobrauktos kilometrus: ");
+            double nobrauktieKilometri = double.Parse(Console.ReadLine());
+
+            string beiguLaiks = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"); // Apzināta kļūda: UTC vietā lokālais laiks
+
+            string getRentalDetails = "SELECT SākumaLaiks, AutoID FROM Nomāšanas WHERE ID = @NomasID;";
+            string getCarRates = "SELECT StundasLikme, KilometraLikme FROM TeslaCars WHERE ID = @AutoID;";
+
+            DateTime sākumaLaiks;
+            double stundasLikme = 0, kilometraLikme = 0;
+
+            using (var command = new SQLiteCommand(getRentalDetails, connection))
+            {
+                command.Parameters.AddWithValue("@NomasID", nomasId);
+                using (var reader = command.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        sākumaLaiks = DateTime.Parse(reader["SākumaLaiks"].ToString());
+                        int autoId = int.Parse(reader["AutoID"].ToString());
+
+                        using (var carCommand = new SQLiteCommand(getCarRates, connection))
+                        {
+                            carCommand.Parameters.AddWithValue("@AutoID", autoId);
+                            using (var carReader = carCommand.ExecuteReader())
+                            {
+                                if (carReader.Read())
+                                {
+                                    stundasLikme = double.Parse(carReader["StundasLikme"].ToString());
+                                    kilometraLikme = double.Parse(carReader["KilometraLikme"].ToString());
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("Nomāšana nav atrasta.");
+                        return;
+                    }
+                }
+            }
+
+            double nomasIlgumsStundas = (DateTime.UtcNow - sākumaLaiks).TotalHours; // Apzināta kļūda: UTC izmantots
+            double kopējāMaksa = (nomasIlgumsStundas * stundasLikme) + (nobrauktieKilometri * kilometraLikme);
+
+            string updateRental = @"
+                UPDATE Nomāšanas 
+                SET BeiguLaiks = @BeiguLaiks, NobrauktieKilometri = @NobrauktieKilometri, KopējāMaksa = @KopējāMaksa 
+                WHERE ID = @NomasID;";
+
+            using (var command = new SQLiteCommand(updateRental, connection))
+            {
+                command.Parameters.AddWithValue("@BeiguLaiks", beiguLaiks);
+                command.Parameters.AddWithValue("@NobrauktieKilometri", nobrauktieKilometri);
+                command.Parameters.AddWithValue("@KopējāMaksa", kopējāMaksa);
+                command.Parameters.AddWithValue("@NomasID", nomasId);
+                command.ExecuteNonQuery();
+            }
+
+            Console.WriteLine($"Nomāšana pabeigta! Kopējā maksa: {kopējāMaksa:F2} EUR\n");
+        }
+    }
+}
