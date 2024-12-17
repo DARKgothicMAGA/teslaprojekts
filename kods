@@ -151,7 +151,7 @@ namespace TeslaRentalPlatform
             Console.Write("Ievadiet auto ID: ");
             int autoId = int.Parse(Console.ReadLine());
 
-            string sākumaLaiks = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"); // Apzināta kļūda: UTC vietā lokālais laiks
+            string sākumaLaiks = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
 
             string query = "INSERT INTO Nomāšanas (KlientaID, AutoID, SākumaLaiks) VALUES (@KlientaID, @AutoID, @SākumaLaiks);";
             using (var command = new SQLiteCommand(query, connection))
