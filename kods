@@ -212,7 +212,7 @@ namespace TeslaRentalPlatform
                 }
             }
 
-            double nomasIlgumsStundas = (DateTime.UtcNow - sākumaLaiks).TotalHours; // Apzināta kļūda: UTC izmantots
+            double nomasIlgumsStundas = (DateTime.UtcNow - sākumaLaiks).TotalHours;
             double kopējāMaksa = (nomasIlgumsStundas * stundasLikme) + (nobrauktieKilometri * kilometraLikme);
 
             string updateRental = @"
