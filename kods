@@ -11,7 +11,6 @@ namespace TeslaRentalPlatform
         {
             string dbPath = "tesla_rental.db";
 
-            // Nodrošina datubāzes iestatīšanu
             if (!File.Exists(dbPath))
             {
                 SQLiteConnection.CreateFile(dbPath);
@@ -22,7 +21,6 @@ namespace TeslaRentalPlatform
             {
                 connection.Open();
 
-                // Vienkārša izvēlne mijiedarbībai
                 Console.WriteLine("Tesla Īres Platforma\n======================");
                 Console.WriteLine("1. Reģistrēt klientu");
                 Console.WriteLine("2. Parādīt Tesla automašīnas");
@@ -71,14 +69,13 @@ namespace TeslaRentalPlatform
                         Modelis TEXT NOT NULL,
                         StundasLikme TEXT NOT NULL,
                         KilometraLikme REAL NOT NULL
-                    );"; // Apzināta kļūda: StundasLikme kā TEXT, nevis REAL
 
                 string createCustomersTable = @"
                     CREATE TABLE Klienti (
                         ID INTEGER PRIMARY KEY AUTOINCREMENT,
                         PilnsVards TEXT NOT NULL,
                         Epasts TEXT NOT NULL UNIQUE
-                    );"; // Apzināta kļūda: Epasts ir UNIQUE
+                    );";
 
                 string createRentalsTable = @"
                     CREATE TABLE Nomāšanas (
@@ -91,7 +88,7 @@ namespace TeslaRentalPlatform
                         KopējāMaksa REAL,
                         FOREIGN KEY (KlientaID) REFERENCES Klienti(ID),
                         FOREIGN KEY (AutoID) REFERENCES TeslaCars(ID)
-                    );"; // Apzināta kļūda: NobrauktieKilometri kā TEXT, nevis REAL
+                    );";
 
                 var command = connection.CreateCommand();
 
@@ -104,11 +101,10 @@ namespace TeslaRentalPlatform
                 command.CommandText = createRentalsTable;
                 command.ExecuteNonQuery();
 
-                // Pievieno piemērus ar Tesla automašīnām
                 command.CommandText = @"
                     INSERT INTO TeslaCars (Modelis, StundasLikme, KilometraLikme) 
                     VALUES ('Model 3', '10', 0.5), ('Model Y', '12', 0.6), ('Model S', '15', 0.8), ('Model X', '18', 1.0);
-                "; // Apzināta kļūda: StundasLikme vērtības kā teksts
+                ";
                 command.ExecuteNonQuery();
             }
         }
@@ -177,7 +173,7 @@ namespace TeslaRentalPlatform
             Console.Write("Ievadiet nobrauktos kilometrus: ");
             double nobrauktieKilometri = double.Parse(Console.ReadLine());
 
-            string beiguLaiks = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"); // Apzināta kļūda: UTC vietā lokālais laiks
+            string beiguLaiks = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
 
             string getRentalDetails = "SELECT SākumaLaiks, AutoID FROM Nomāšanas WHERE ID = @NomasID;";
             string getCarRates = "SELECT StundasLikme, KilometraLikme FROM TeslaCars WHERE ID = @AutoID;";
